@@ -1,264 +1,24 @@
 # RustPress DevOps
 
-Centralized GitHub Actions and DevOps workflows for the RustPress organization. This repository contains **reusable workflows** that are called from other repositories in the organization.
+Centralized GitHub Actions for the RustPress organization. This repository contains **composite actions** that can be used in any repository's workflows.
 
-> **Note**: This repository is an **abstract container** for workflows. No actions are executed on this repository directly - all workflows are designed to be called from other repositories.
+## Available Actions
 
-## Available Reusable Workflows
+| Action | Description |
+|--------|-------------|
+| `ci-rust` | Run Rust CI (check, test, clippy, fmt) |
+| `ci-node` | Run Node.js CI (lint, test, build) |
+| `build-rust` | Build Rust project for a specific target |
+| `build-node` | Build Node.js project |
+| `build-theme` | Package theme for release |
+| `version-bump` | Determine version bump from commits |
+| `create-release` | Create GitHub release with artifacts |
+| `cleanup-releases` | Delete prereleases and drafts |
+| `docker-build` | Build and push Docker image |
 
-### Release Workflows
+## Usage
 
-| Workflow | File | Description | Use For |
-|----------|------|-------------|---------|
-| Rust Release | `release-rust.yml` | Multi-platform Rust builds with optional Docker | Core, plugins |
-| Node.js Release | `release-node.yml` | Node.js/npm project releases | Admin UI |
-| Theme Release | `release-theme.yml` | Theme package releases | All themes |
-| Documentation Release | `release-docs.yml` | Documentation releases | Docs, crates |
-
-### CI Workflows
-
-| Workflow | File | Description | Use For |
-|----------|------|-------------|---------|
-| Rust CI | `ci-rust.yml` | Rust checks, tests, clippy, format | All Rust projects |
-| Node.js CI | `ci-node.yml` | Node.js lint, test, build | All Node.js projects |
-
-## How to Use Reusable Workflows
-
-### Basic Concept
-
-GitHub reusable workflows allow you to define a workflow once and call it from multiple repositories. The calling repository (caller) uses `uses:` to reference the reusable workflow (callee) in this devops repository.
-
-### Syntax
-
-```yaml
-jobs:
-  job-name:
-    uses: rustpress-net/rustpress-core-devops/.github/workflows/<workflow-file>@main
-    with:
-      input1: value1
-      input2: value2
-    secrets: inherit
-```
-
-### Key Points
-
-1. **Reference Format**: `<org>/<repo>/.github/workflows/<file>@<ref>`
-2. **Branch Reference**: Use `@main` for the latest stable workflows
-3. **Secrets**: Use `secrets: inherit` to pass all secrets from caller to callee
-4. **Inputs**: Pass configuration via `with:` block
-
----
-
-## Release Workflow Usage
-
-### For Rust Projects (Core, Plugins)
-
-Create `.github/workflows/release.yml` in your repository:
-
-```yaml
-name: Release
-
-on:
-  push:
-    branches: [main, master]
-  workflow_dispatch:
-    inputs:
-      version_bump:
-        description: 'Version bump type'
-        required: true
-        default: 'auto'
-        type: choice
-        options:
-          - auto
-          - patch
-          - minor
-          - major
-      release_type:
-        description: 'Release type'
-        required: true
-        default: 'auto'
-        type: choice
-        options:
-          - auto
-          - release
-          - pre-release
-          - draft
-
-jobs:
-  release:
-    uses: rustpress-net/rustpress-core-devops/.github/workflows/release-rust.yml@main
-    with:
-      version_bump: ${{ inputs.version_bump || 'auto' }}
-      release_type: ${{ inputs.release_type || 'auto' }}
-      build_docker: true           # Set to false for plugins
-      include_admin_ui: true       # Set to false for plugins
-    secrets: inherit
-```
-
-#### Rust Release Inputs
-
-| Input | Type | Default | Description |
-|-------|------|---------|-------------|
-| `version_bump` | string | `auto` | Version bump: `auto`, `patch`, `minor`, `major` |
-| `release_type` | string | `auto` | Release type: `auto`, `release`, `pre-release`, `draft` |
-| `build_docker` | boolean | `true` | Build and push Docker image |
-| `docker_image_name` | string | repo name | Custom Docker image name |
-| `include_admin_ui` | boolean | `false` | Include Admin UI in build |
-| `admin_ui_ref` | string | from file | Admin UI version override |
-
-### For Node.js Projects (Admin UI)
-
-```yaml
-name: Release
-
-on:
-  push:
-    branches: [main, master]
-  workflow_dispatch:
-    inputs:
-      version_bump:
-        description: 'Version bump type'
-        required: true
-        default: 'auto'
-        type: choice
-        options:
-          - auto
-          - patch
-          - minor
-          - major
-      release_type:
-        description: 'Release type'
-        required: true
-        default: 'auto'
-        type: choice
-        options:
-          - auto
-          - release
-          - pre-release
-          - draft
-
-jobs:
-  release:
-    uses: rustpress-net/rustpress-core-devops/.github/workflows/release-node.yml@main
-    with:
-      version_bump: ${{ inputs.version_bump || 'auto' }}
-      release_type: ${{ inputs.release_type || 'auto' }}
-    secrets: inherit
-```
-
-#### Node.js Release Inputs
-
-| Input | Type | Default | Description |
-|-------|------|---------|-------------|
-| `version_bump` | string | `auto` | Version bump type |
-| `release_type` | string | `auto` | Release type |
-| `node_version` | string | `20` | Node.js version |
-| `build_command` | string | `npm run build` | Build command |
-| `dist_folder` | string | `dist` | Distribution folder to package |
-
-### For Theme Projects
-
-```yaml
-name: Release
-
-on:
-  push:
-    branches: [main, master]
-  workflow_dispatch:
-    inputs:
-      version_bump:
-        description: 'Version bump type'
-        required: true
-        default: 'auto'
-        type: choice
-        options:
-          - auto
-          - patch
-          - minor
-          - major
-      release_type:
-        description: 'Release type'
-        required: true
-        default: 'auto'
-        type: choice
-        options:
-          - auto
-          - release
-          - pre-release
-          - draft
-
-jobs:
-  release:
-    uses: rustpress-net/rustpress-core-devops/.github/workflows/release-theme.yml@main
-    with:
-      version_bump: ${{ inputs.version_bump || 'auto' }}
-      release_type: ${{ inputs.release_type || 'auto' }}
-    secrets: inherit
-```
-
-#### Theme Release Inputs
-
-| Input | Type | Default | Description |
-|-------|------|---------|-------------|
-| `version_bump` | string | `auto` | Version bump type |
-| `release_type` | string | `auto` | Release type |
-
-### For Documentation Projects
-
-```yaml
-name: Release
-
-on:
-  push:
-    branches: [main, master]
-  workflow_dispatch:
-    inputs:
-      version_bump:
-        description: 'Version bump type'
-        required: true
-        default: 'auto'
-        type: choice
-        options:
-          - auto
-          - patch
-          - minor
-          - major
-      release_type:
-        description: 'Release type'
-        required: true
-        default: 'auto'
-        type: choice
-        options:
-          - auto
-          - release
-          - pre-release
-          - draft
-
-jobs:
-  release:
-    uses: rustpress-net/rustpress-core-devops/.github/workflows/release-docs.yml@main
-    with:
-      version_bump: ${{ inputs.version_bump || 'auto' }}
-      release_type: ${{ inputs.release_type || 'auto' }}
-    secrets: inherit
-```
-
-#### Documentation Release Inputs
-
-| Input | Type | Default | Description |
-|-------|------|---------|-------------|
-| `version_bump` | string | `auto` | Version bump type |
-| `release_type` | string | `auto` | Release type |
-| `build_command` | string | empty | Build command (if docs need building) |
-| `dist_folder` | string | `docs` | Folder to package |
-
----
-
-## CI Workflow Usage
-
-### For Rust Projects
-
-Create `.github/workflows/ci.yml` in your repository:
+### CI Workflow Example (Rust)
 
 ```yaml
 name: CI
@@ -271,27 +31,17 @@ on:
 
 jobs:
   ci:
-    uses: rustpress-net/rustpress-core-devops/.github/workflows/ci-rust.yml@main
-    with:
-      run_tests: true
-      run_clippy: true
-      run_fmt: true
-      postgres_required: true    # Set based on your needs
-      redis_required: true       # Set based on your needs
-    secrets: inherit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: rustpress-net/rustpress-core-devops/actions/ci-rust@main
+        with:
+          run_tests: 'true'
+          run_clippy: 'true'
+          run_fmt: 'true'
 ```
 
-#### Rust CI Inputs
-
-| Input | Type | Default | Description |
-|-------|------|---------|-------------|
-| `run_tests` | boolean | `true` | Run cargo tests |
-| `run_clippy` | boolean | `true` | Run clippy linting |
-| `run_fmt` | boolean | `true` | Check code formatting |
-| `postgres_required` | boolean | `false` | Start PostgreSQL service |
-| `redis_required` | boolean | `false` | Start Redis service |
-
-### For Node.js Projects
+### CI Workflow Example (Node.js)
 
 ```yaml
 name: CI
@@ -304,114 +54,214 @@ on:
 
 jobs:
   ci:
-    uses: rustpress-net/rustpress-core-devops/.github/workflows/ci-node.yml@main
-    with:
-      run_tests: true
-      run_lint: true
-      run_build: true
-    secrets: inherit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: rustpress-net/rustpress-core-devops/actions/ci-node@main
+        with:
+          run_tests: 'true'
+          run_lint: 'true'
+          run_build: 'true'
 ```
 
-#### Node.js CI Inputs
+### Release Workflow Example (Rust)
 
-| Input | Type | Default | Description |
-|-------|------|---------|-------------|
-| `node_version` | string | `20` | Node.js version |
-| `run_tests` | boolean | `true` | Run tests |
-| `run_lint` | boolean | `true` | Run linting |
-| `run_build` | boolean | `true` | Run build |
-| `test_command` | string | `npm test` | Custom test command |
-| `lint_command` | string | `npm run lint` | Custom lint command |
-| `build_command` | string | `npm run build` | Custom build command |
+```yaml
+name: Release
 
----
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      version_bump:
+        description: 'Version bump type'
+        required: true
+        default: 'auto'
+        type: choice
+        options: [auto, patch, minor, major]
+      release_type:
+        description: 'Release type'
+        required: true
+        default: 'auto'
+        type: choice
+        options: [auto, release, pre-release, draft]
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      new_version: ${{ steps.bump.outputs.new_version }}
+      release_type: ${{ steps.bump.outputs.release_type }}
+      should_release: ${{ steps.bump.outputs.should_release }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: rustpress-net/rustpress-core-devops/actions/version-bump@main
+        id: bump
+        with:
+          version_bump: ${{ inputs.version_bump || 'auto' }}
+          release_type: ${{ inputs.release_type || 'auto' }}
+          version_file: 'Cargo.toml'
+
+  build-linux:
+    needs: version
+    if: needs.version.outputs.should_release == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: rustpress-net/rustpress-core-devops/actions/build-rust@main
+        with:
+          target: x86_64-unknown-linux-gnu
+          artifact_name: myapp-linux-x86_64
+          include_admin_ui: 'true'
+
+  build-windows:
+    needs: version
+    if: needs.version.outputs.should_release == 'true'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: rustpress-net/rustpress-core-devops/actions/build-rust@main
+        with:
+          target: x86_64-pc-windows-msvc
+          artifact_name: myapp-windows-x86_64
+
+  build-macos:
+    needs: version
+    if: needs.version.outputs.should_release == 'true'
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: rustpress-net/rustpress-core-devops/actions/build-rust@main
+        with:
+          target: x86_64-apple-darwin
+          artifact_name: myapp-macos-x86_64
+      - uses: rustpress-net/rustpress-core-devops/actions/build-rust@main
+        with:
+          target: aarch64-apple-darwin
+          artifact_name: myapp-macos-arm64
+
+  release:
+    needs: [version, build-linux, build-windows, build-macos]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: rustpress-net/rustpress-core-devops/actions/create-release@main
+        with:
+          version: ${{ needs.version.outputs.new_version }}
+          release_type: ${{ needs.version.outputs.release_type }}
+          artifact_pattern: 'myapp-*'
+          release_name_prefix: 'MyApp '
+
+  cleanup:
+    needs: [version, release]
+    if: needs.version.outputs.release_type == 'release'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: rustpress-net/rustpress-core-devops/actions/cleanup-releases@main
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+  docker:
+    needs: [version, release]
+    if: needs.version.outputs.release_type == 'release'
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: rustpress-net/rustpress-core-devops/actions/docker-build@main
+        with:
+          version: ${{ needs.version.outputs.new_version }}
+          image_name: myapp
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+```
+
+### Release Workflow Example (Theme)
+
+```yaml
+name: Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      version_bump:
+        description: 'Version bump type'
+        default: 'auto'
+        type: choice
+        options: [auto, patch, minor, major]
+      release_type:
+        description: 'Release type'
+        default: 'auto'
+        type: choice
+        options: [auto, release, pre-release, draft]
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      new_version: ${{ steps.bump.outputs.new_version }}
+      release_type: ${{ steps.bump.outputs.release_type }}
+      should_release: ${{ steps.bump.outputs.should_release }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: rustpress-net/rustpress-core-devops/actions/version-bump@main
+        id: bump
+        with:
+          version_file: 'theme.json'
+
+  build:
+    needs: version
+    if: needs.version.outputs.should_release == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: rustpress-net/rustpress-core-devops/actions/build-theme@main
+        with:
+          version: ${{ needs.version.outputs.new_version }}
+          artifact_name: my-theme
+
+  release:
+    needs: [version, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: rustpress-net/rustpress-core-devops/actions/create-release@main
+        with:
+          version: ${{ needs.version.outputs.new_version }}
+          release_type: ${{ needs.version.outputs.release_type }}
+```
 
 ## Release Type Control
 
-### Commit Message Tags
-
 Control release type via commit messages:
 
-- `[release]` - Creates an official release, cleans up all prereleases/drafts
+- `[release]` - Creates an official release, triggers cleanup of prereleases/drafts
 - `[pre-release]` - Creates a prerelease
 - `[draft]` - Creates a draft release
 - No tag - No release is created
 
-### Examples
-
-```bash
-# Create an official release
-git commit -m "feat: Add new feature [release]"
-
-# Create a pre-release
-git commit -m "feat: Add experimental feature [pre-release]"
-
-# Create a draft for review
-git commit -m "feat: WIP feature [draft]"
-
-# Normal commit (no release)
-git commit -m "fix: Bug fix"
-```
-
-### What Happens on Release
-
-When `[release]` is used:
-1. Creates official release with binaries
-2. Builds and pushes Docker image (if enabled)
-3. **Deletes ALL prereleases and drafts** to keep releases clean
-
----
-
 ## Version Bumping
 
-Version is automatically determined from commit messages using conventional commits:
+Version is automatically determined from conventional commits:
 
 | Pattern | Bump Type |
 |---------|-----------|
 | `feat!:` or `BREAKING CHANGE` | Major |
 | `feat:` or `feature:` | Minor |
 | Everything else | Patch |
-
-You can also manually specify version bump via workflow dispatch.
-
----
-
-## Repository Setup Checklist
-
-When adding a new repository to use centralized workflows:
-
-1. **Identify project type**: Rust, Node.js, Theme, or Docs
-2. **Create `.github/workflows/release.yml`** with appropriate caller workflow
-3. **Create `.github/workflows/ci.yml`** with appropriate CI workflow
-4. **Ensure version file exists**:
-   - Rust: `Cargo.toml` with `version = "x.y.z"`
-   - Node.js: `package.json` with `"version": "x.y.z"`
-   - Theme: `theme.json` with `"version": "x.y.z"`
-   - Docs: `VERSION` file or `package.json`
-5. **Test with a draft release**: Use `[draft]` commit to verify setup
-
----
-
-## Troubleshooting
-
-### Workflow Not Triggering
-
-- Ensure the branch name matches the trigger (`main` or `master`)
-- Check that commit message includes release type tag
-- Verify `secrets: inherit` is included in caller workflow
-
-### Permission Errors
-
-- The caller repository must have Actions enabled
-- `secrets: inherit` passes `GITHUB_TOKEN` automatically
-- For Docker push, ensure packages permission is configured
-
-### Version Not Updating
-
-- Check that version file exists and is in correct format
-- Verify conventional commit patterns in commit messages
-
----
 
 ## License
 
